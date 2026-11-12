@@ -5,8 +5,9 @@ import { loadConfig } from '../src/config.js';
 import { LibreLinkUpClient, TREND_LABELS } from '../src/libre.js';
 
 try {
-  const config = loadConfig();
-  const client = new LibreLinkUpClient(config.libre);
+  const { libre } = loadConfig();
+  if (!libre) throw new Error('LLU_EMAIL and LLU_PASSWORD must be set in .env (see .env.example).');
+  const client = new LibreLinkUpClient(libre);
 
   await client.login();
   console.log('Login OK.');

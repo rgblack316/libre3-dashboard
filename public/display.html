@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Glucose</title>
+  <link rel="stylesheet" href="/static/display.css">
+</head>
+<body>
+  <div id="app" data-level="nodata" data-alert="">
+    <div id="banner" hidden></div>
+
+    <section id="hero">
+      <div class="reading">
+        <span id="value">--</span>
+        <svg id="arrow" viewBox="0 0 100 100" aria-hidden="true" hidden>
+          <g id="arrowGroup">
+            <path d="M12 50 H72 M52 28 L76 50 L52 72" fill="none" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        </svg>
+      </div>
+      <div id="unit">mg/dL</div>
+      <div id="label">No data</div>
+      <div id="trendText"></div>
+      <div id="age"></div>
+    </section>
+
+    <section id="side">
+      <div id="chart"><svg id="chartsvg" role="img" aria-label="Glucose chart"></svg></div>
+      <div id="stats">
+        <div class="stat"><span class="stat-label">24h average</span><span class="stat-value" id="statAvg">--</span></div>
+        <div class="stat wide">
+          <span class="stat-label">Time in range</span>
+          <div id="tirbar"><span id="tirLow"></span><span id="tirIn"></span><span id="tirHigh"></span></div>
+          <span class="stat-sub" id="tirText">--</span>
+        </div>
+        <div class="stat"><span class="stat-label">24h range</span><span class="stat-value" id="statRange">--</span></div>
+      </div>
+    </section>
+
+    <div id="conn" hidden>Lost connection to the server. Retrying…</div>
+    <button id="soundBadge" type="button" hidden>Sound is off. Click to enable.</button>
+  </div>
+  <div id="dim"></div>
+  <script src="/static/display.js"></script>
+</body>
+</html>

@@ -1,9 +1,7 @@
-// Entry point: poll LibreLinkUp and store readings. (Web server and display come next.)
+// Entry point: polling, alerts and the web server (display at /display, settings at /admin).
 
 import { loadConfig } from './config.js';
-import { openDb } from './db.js';
-import { LibreLinkUpClient, TREND_LABELS } from './libre.js';
-import { Poller } from './poller.js';
+import { createApp } from './app.js';
 
 let config;
 try {
@@ -13,31 +11,17 @@ try {
   process.exit(1);
 }
 
-const db = openDb(config.dbPath);
-const client = new LibreLinkUpClient(config.libre);
-const poller = new Poller({ client, db, intervalMs: config.pollIntervalMs });
+const app = await createApp({ config });
+const { port } = await app.start();
+console.log(`Libre dashboard listening on port ${port} (display: /display, settings: /admin), database: ${config.dbPath}`);
+if (!config.libre) console.log('No LibreLinkUp account in .env yet: add one on the admin page.');
 
-poller.on('poll', ({ inserted, current }) => {
-  if (!current) {
-    console.log(`poll ok: no current reading in response (+${inserted} stored)`);
-    return;
-  }
-  const trend = TREND_LABELS[current.trend] ?? 'trend unknown';
-  console.log(`poll ok: ${current.value} mg/dL, ${trend} (+${inserted} new, ${db.count()} total)`);
-});
-
-poller.on('pollError', (err) => {
-  const retry = Math.round(poller.nextDelay() / 1000);
-  console.error(`poll failed [${err.code}]: ${err.message}. Retrying in ${retry}s`);
-});
-
-function shutdown() {
-  poller.stop();
-  db.close();
+let stopping = false;
+async function shutdown() {
+  if (stopping) return;
+  stopping = true;
+  await app.stop();
   process.exit(0);
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
-
-console.log(`Starting poller (every ${config.pollIntervalMs / 1000}s), database: ${config.dbPath}`);
-poller.start();

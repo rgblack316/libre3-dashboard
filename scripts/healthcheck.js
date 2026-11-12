@@ -1,19 +1,11 @@
-// Docker healthcheck: healthy if the last poll succeeded within the last 10 minutes.
+// Docker healthcheck: healthy if the web server answers /api/health.
+// (Poll/credential problems are shown in the UI and alerts, not by restarting the container.)
 
-import { existsSync } from 'node:fs';
-import { DatabaseSync } from 'node:sqlite';
-
-const MAX_AGE_MS = 10 * 60_000;
-const dbPath = process.env.DB_PATH || './data/readings.db';
-
+const port = process.env.PORT || '8080';
 try {
-  if (!existsSync(dbPath)) throw new Error('database not created yet');
-  const db = new DatabaseSync(dbPath);
-  const row = db.prepare("SELECT value FROM state WHERE key = 'last_poll'").get();
-  db.close();
-  const poll = row ? JSON.parse(row.value) : null;
-  if (poll?.ok && Date.now() - poll.at < MAX_AGE_MS) process.exit(0);
-  console.error(poll ? `last poll: ${poll.ok ? 'ok but stale' : `failed (${poll.code})`}` : 'no poll recorded yet');
+  const res = await fetch(`http://127.0.0.1:${port}/api/health`, { signal: AbortSignal.timeout(5000) });
+  if (res.ok) process.exit(0);
+  console.error(`health returned ${res.status}`);
 } catch (e) {
   console.error(`healthcheck error: ${e.message}`);
 }

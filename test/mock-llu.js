@@ -22,8 +22,8 @@ export async function startMock({
   userId = 'user-123',
   patientId = 'patient-1',
   redirectRegion = null,
+  start = Date.UTC(2026, 10, 12, 17, 20, 0),
 } = {}) {
-  const start = Date.UTC(2026, 10, 12, 17, 20, 0);
   const state = {
     now: start,
     value: 112,

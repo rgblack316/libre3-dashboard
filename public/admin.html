@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Glucose dashboard settings</title>
+  <link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+
+<main id="login" class="narrow" hidden>
+  <h1>Glucose dashboard</h1>
+  <form id="loginForm" class="card">
+    <label>Admin password
+      <input type="password" id="loginPw" autocomplete="current-password" required autofocus>
+    </label>
+    <button type="submit">Sign in</button>
+    <p class="msg" id="loginMsg"></p>
+  </form>
+</main>
+
+<div id="main" hidden>
+  <header>
+    <h1>Glucose dashboard</h1>
+    <nav id="tabs" aria-label="Sections">
+      <button type="button" data-tab="status" class="active">Status</button>
+      <button type="button" data-tab="alerts">Alerts</button>
+      <button type="button" data-tab="display">Display</button>
+      <button type="button" data-tab="account">Account</button>
+      <button type="button" data-tab="system">System</button>
+      <button type="button" data-tab="data">Data</button>
+    </nav>
+    <div class="spacer"></div>
+    <a href="/display" target="_blank" rel="noopener">Open display</a>
+    <button type="button" id="logout" class="secondary">Sign out</button>
+  </header>
+
+  <!-- STATUS -->
+  <section data-panel="status">
+    <div class="card">
+      <h2>Right now</h2>
+      <div id="nowValue" class="big">--</div>
+      <p id="nowText" class="muted">Loading…</p>
+      <p id="alertText"></p>
+      <div class="row">
+        <label class="inline">Snooze sound
+          <select id="snoozeMinutes">
+            <option value="15">15 min</option>
+            <option value="30" selected>30 min</option>
+            <option value="60">1 hour</option>
+            <option value="120">2 hours</option>
+            <option value="240">4 hours</option>
+          </select>
+        </label>
+        <button type="button" id="btnSnooze">Snooze</button>
+        <button type="button" id="btnClearSnooze" class="secondary">Clear snooze</button>
+        <button type="button" id="btnAck" class="secondary">Acknowledge alert</button>
+      </div>
+      <div class="row">
+        <button type="button" id="btnBeep" class="secondary">Test display sound</button>
+        <button type="button" id="btnPoll" class="secondary">Check for new reading now</button>
+      </div>
+      <p class="msg" id="statusMsg"></p>
+    </div>
+    <div class="card">
+      <h2>Connection</h2>
+      <dl id="connInfo" class="kv"></dl>
+    </div>
+    <div class="card">
+      <h2>Recent alerts</h2>
+      <div class="scroll">
+        <table id="alertTable">
+          <thead><tr><th>Time</th><th>Alert</th><th>Event</th><th>mg/dL</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ALERTS -->
+  <section data-panel="alerts" hidden>
+    <form class="card settings" data-settings-form>
+      <h2>Thresholds <span class="muted">(mg/dL)</span></h2>
+      <div class="grid">
+        <label>Urgent low <input type="number" data-path="thresholds.urgentLow" data-kind="int" min="40" max="100"></label>
+        <label>Low <input type="number" data-path="thresholds.low" data-kind="int" min="55" max="120"></label>
+        <label>High <input type="number" data-path="thresholds.high" data-kind="int" min="120" max="350"></label>
+        <label>Urgent high <input type="number" data-path="thresholds.urgentHigh" data-kind="int" min="150" max="500"></label>
+      </div>
+
+      <h2>Alert types</h2>
+      <div class="checks">
+        <label><input type="checkbox" data-path="alerts.urgentLow"> Urgent low</label>
+        <label><input type="checkbox" data-path="alerts.low"> Low</label>
+        <label><input type="checkbox" data-path="alerts.high"> High</label>
+        <label><input type="checkbox" data-path="alerts.urgentHigh"> Urgent high</label>
+        <label><input type="checkbox" data-path="alerts.stale"> No new data</label>
+        <label><input type="checkbox" data-path="alerts.apiError"> Can't reach LibreLinkUp</label>
+      </div>
+      <div class="grid">
+        <label>"No new data" after (minutes) <input type="number" data-path="stale.minutes" data-kind="int" min="3" max="120"></label>
+        <label>Clear margin (mg/dL) <input type="number" data-path="alerts.hysteresis" data-kind="int" min="0" max="20"></label>
+      </div>
+      <p class="hint">A low or high alert clears only once the reading is back inside the range by the clear margin, so it doesn't flicker at the edge.</p>
+
+      <h2>Sound</h2>
+      <div class="checks">
+        <label><input type="checkbox" data-path="alerts.sound"> Play sound on the display</label>
+        <label><input type="checkbox" data-path="alerts.snoozeUrgent"> Let snooze silence urgent alerts too</label>
+      </div>
+      <div class="grid">
+        <label>Repeat every (minutes) <input type="number" data-path="alerts.repeatMinutes" data-kind="int" min="1" max="60"></label>
+        <label>Urgent repeat every (minutes) <input type="number" data-path="alerts.urgentRepeatMinutes" data-kind="int" min="1" max="60"></label>
+        <label>Default snooze (minutes) <input type="number" data-path="alerts.snoozeMinutes" data-kind="int" min="5" max="480"></label>
+      </div>
+
+      <h2>Quiet hours</h2>
+      <div class="checks"><label><input type="checkbox" data-path="alerts.quietHours.enabled"> Mute sound for non-urgent alerts</label></div>
+      <div class="grid">
+        <label>From <input type="time" data-path="alerts.quietHours.start"></label>
+        <label>Until <input type="time" data-path="alerts.quietHours.end"></label>
+      </div>
+      <p class="hint">Urgent alerts still sound during quiet hours. The screen always shows every alert.</p>
+
+      <div class="row"><button type="submit">Save</button><span class="msg" data-save-msg></span></div>
+    </form>
+  </section>
+
+  <!-- DISPLAY -->
+  <section data-panel="display" hidden>
+    <form class="card settings" data-settings-form>
+      <h2>Display</h2>
+      <div class="grid">
+        <label>Chart shows
+          <select data-path="display.chartHours" data-kind="int">
+            <option value="1">Last 1 hour</option>
+            <option value="3">Last 3 hours</option>
+            <option value="6">Last 6 hours</option>
+            <option value="12">Last 12 hours</option>
+            <option value="24">Last 24 hours</option>
+          </select>
+        </label>
+        <label>Theme
+          <select data-path="display.theme">
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </label>
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" data-path="display.showChart"> Show chart</label>
+        <label><input type="checkbox" data-path="display.showStats"> Show 24-hour stats</label>
+      </div>
+
+      <h2>Night dimming</h2>
+      <div class="checks"><label><input type="checkbox" data-path="display.dim.enabled"> Dim the display on a schedule</label></div>
+      <div class="grid">
+        <label>From <input type="time" data-path="display.dim.start"></label>
+        <label>Until <input type="time" data-path="display.dim.end"></label>
+        <label>Brightness (%) <input type="number" data-path="display.dim.level" data-kind="int" min="10" max="100"></label>
+      </div>
+      <p class="hint">Dimming darkens the page. It can't switch the monitor's backlight off.</p>
+
+      <div class="row"><button type="submit">Save</button><span class="msg" data-save-msg></span></div>
+    </form>
+  </section>
+
+  <!-- ACCOUNT -->
+  <section data-panel="account" hidden>
+    <form class="card" id="accountForm">
+      <h2>LibreLinkUp follower account</h2>
+      <p class="hint">Use a dedicated follower account that your Libre app shares data with, not your main Libre login.</p>
+      <label>Email <input type="email" id="accEmail" autocomplete="off"></label>
+      <label>Password <input type="password" id="accPassword" autocomplete="new-password" placeholder="Leave blank to keep the current password"></label>
+      <label>Region
+        <select id="accRegion">
+          <option value="">Automatic (recommended)</option>
+          <option value="us">US</option><option value="eu">EU</option><option value="eu2">EU2</option>
+          <option value="de">DE</option><option value="fr">FR</option><option value="jp">JP</option>
+          <option value="ap">AP</option><option value="au">AU</option><option value="ae">AE</option>
+          <option value="ca">CA</option><option value="la">LA</option><option value="ru">RU</option>
+          <option value="cn">CN</option>
+        </select>
+      </label>
+      <p class="hint" id="accSource"></p>
+      <div class="row">
+        <button type="button" id="accTest" class="secondary">Test login</button>
+        <button type="submit">Save</button>
+      </div>
+      <p class="msg" id="accMsg"></p>
+    </form>
+  </section>
+
+  <!-- SYSTEM -->
+  <section data-panel="system" hidden>
+    <form class="card settings" data-settings-form>
+      <h2>System</h2>
+      <div class="grid">
+        <label>Check for readings every (seconds) <input type="number" data-path="system.pollSeconds" data-kind="int" min="30" max="300"></label>
+        <label>Keep readings for (days, 0 = forever) <input type="number" data-path="system.retentionDays" data-kind="int" min="0" max="3650"></label>
+        <label>Time zone <input type="text" data-path="system.timezone" placeholder="Server default" autocomplete="off" spellcheck="false"></label>
+      </div>
+      <p class="hint">The time zone is used for quiet hours and night dimming. Leave blank to use the server's. Example: America/New_York</p>
+      <div class="row"><button type="submit">Save</button><span class="msg" data-save-msg></span></div>
+    </form>
+
+    <form class="card" id="passwordForm">
+      <h2>Change admin password</h2>
+      <label>Current password <input type="password" id="pwCurrent" autocomplete="current-password" required></label>
+      <label>New password (8+ characters) <input type="password" id="pwNew" autocomplete="new-password" minlength="8" required></label>
+      <div class="row"><button type="submit">Change password</button><span class="msg" id="pwMsg"></span></div>
+    </form>
+
+    <div class="card">
+      <h2>About</h2>
+      <dl id="sysInfo" class="kv"></dl>
+    </div>
+  </section>
+
+  <!-- DATA -->
+  <section data-panel="data" hidden>
+    <div class="card">
+      <h2>Export readings</h2>
+      <div class="grid">
+        <label>From <input type="date" id="expFrom"></label>
+        <label>To <input type="date" id="expTo"></label>
+      </div>
+      <p class="hint">Leave both blank for everything. Times in the file are UTC.</p>
+      <a id="expLink" class="button" href="/api/admin/export.csv">Download CSV</a>
+      <p id="dataInfo" class="muted"></p>
+    </div>
+  </section>
+</div>
+
+<script src="/static/admin.js"></script>
+</body>
+</html>

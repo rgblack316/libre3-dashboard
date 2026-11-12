@@ -95,9 +95,36 @@ write_env() {
     {
       printf 'LLU_EMAIL=%s\n' "$(dq "$email")"
       printf 'LLU_PASSWORD=%s\n' "$(dq "$pass")"
-      printf 'LLU_REGION=\nLLU_PATIENT_ID=\nPOLL_INTERVAL_SECONDS=60\n'
+      printf 'LLU_REGION=\nLLU_PATIENT_ID=\n'
     } >"$ENV_FILE"
   )
+}
+
+# Set KEY=VALUE in .env unless it already has a non-empty value.
+set_if_blank() {
+  local key=$1 val=$2
+  if grep -q "^$key=." "$ENV_FILE"; then
+    return 0
+  elif grep -q "^$key=" "$ENV_FILE"; then
+    sed -i "s|^$key=.*|$key=$val|" "$ENV_FILE"
+  else
+    printf '%s=%s\n' "$key" "$val" >>"$ENV_FILE"
+  fi
+}
+
+gen_password() {
+  local p
+  p=$( (head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 16) 2>/dev/null || true)
+  [ "${#p}" -eq 16 ] || die "Could not generate an admin password."
+  printf '%s' "$p"
+}
+
+detect_tz() {
+  if have timedatectl; then
+    timedatectl show -p Timezone --value 2>/dev/null || true
+  elif [ -f /etc/timezone ]; then
+    cat /etc/timezone
+  fi
 }
 
 setup_env() {
@@ -132,6 +159,15 @@ setup_env() {
   # The container runs as your user so it can write to ./data.
   grep -q '^PUID=' "$ENV_FILE" || printf 'PUID=%s\n' "$(id -u)" >>"$ENV_FILE"
   grep -q '^PGID=' "$ENV_FILE" || printf 'PGID=%s\n' "$(id -g)" >>"$ENV_FILE"
+  # Admin page password: generated once and shown at the end (change it later in /admin).
+  ADMIN_PW_NEW=""
+  if ! grep -q '^ADMIN_PASSWORD=.' "$ENV_FILE"; then
+    ADMIN_PW_NEW=$(gen_password)
+    set_if_blank ADMIN_PASSWORD "$ADMIN_PW_NEW"
+  fi
+  set_if_blank HOST_PORT 8080
+  local tz; tz=$(detect_tz | tr -cd 'A-Za-z0-9_/+-')
+  [ -n "$tz" ] && set_if_blank TZ "$tz"
   chmod 600 "$ENV_FILE"
   mkdir -p "$INSTALL_DIR/data"
 }
@@ -143,25 +179,19 @@ main() {
   setup_env
   cd "$INSTALL_DIR"
 
-  if [ "$NEEDS_CREDS" -eq 1 ]; then
-    cat <<EOF
-
-No credentials were entered (no terminal available). Next steps:
-  1. nano $INSTALL_DIR/.env       # set LLU_EMAIL and LLU_PASSWORD
-  2. re-run this installer, or:  cd $INSTALL_DIR && ${DC[*]} up -d --build
-EOF
-    exit 0
-  fi
-
   say "Building the image"
   "${DC[@]}" build
 
-  say "Testing the Libre login (nothing is started yet)"
-  if ! "${DC[@]}" run --rm libre node --disable-warning=ExperimentalWarning scripts/test-login.js; then
-    if [ "$FRESH" -eq 1 ]; then
-      die "Login test failed, so the service was not started. Check LLU_EMAIL / LLU_PASSWORD in $INSTALL_DIR/.env (and that the follower account has accepted the invite in the LibreLinkUp app), then re-run this installer."
+  if [ "$NEEDS_CREDS" -eq 1 ]; then
+    say "No LibreLinkUp credentials entered; you can add them on the Account tab of the admin page"
+  else
+    say "Testing the Libre login (nothing is started yet)"
+    if ! "${DC[@]}" run --rm libre node --disable-warning=ExperimentalWarning scripts/test-login.js; then
+      if [ "$FRESH" -eq 1 ]; then
+        die "Login test failed, so the service was not started. Check LLU_EMAIL / LLU_PASSWORD in $INSTALL_DIR/.env (and that the follower account has accepted the invite in the LibreLinkUp app), then re-run this installer."
+      fi
+      warn "Login test failed; starting anyway because this is an update. Check '${DC[*]} logs libre'."
     fi
-    warn "Login test failed; starting anyway because this is an update. Check '${DC[*]} logs libre'."
   fi
 
   say "Starting the dashboard"
@@ -169,9 +199,22 @@ EOF
   sleep 5
   "${DC[@]}" logs --tail 5 libre || true
 
+  local HOST_IP PORT_OUT ADMIN_LINE
+  HOST_IP=$(hostname -I 2>/dev/null | awk '{print $1}'); HOST_IP=${HOST_IP:-localhost}
+  PORT_OUT=$(grep '^HOST_PORT=' "$ENV_FILE" | cut -d= -f2); PORT_OUT=${PORT_OUT:-8080}
+  if [ -n "$ADMIN_PW_NEW" ]; then
+    ADMIN_LINE="Admin password (shown once; also in $ENV_FILE): $ADMIN_PW_NEW"
+  else
+    ADMIN_LINE="Admin password: unchanged (see ADMIN_PASSWORD in $ENV_FILE if never changed in the app)"
+  fi
+
   cat <<EOF
 
 Installed in $INSTALL_DIR
+
+Display:  http://$HOST_IP:$PORT_OUT/display
+Admin:    http://$HOST_IP:$PORT_OUT/admin
+$ADMIN_LINE
 
 Useful commands (run in that folder):
   ${DC[*]} logs -f libre     watch polls

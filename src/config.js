@@ -1,25 +1,25 @@
-// Reads configuration from environment variables (loaded from .env via `node --env-file`).
+// Reads configuration from environment variables (.env via Docker Compose or `node --env-file`).
+// LibreLinkUp credentials are optional here: they can also be entered on the admin page.
 
 export function loadConfig(env = process.env) {
   const email = (env.LLU_EMAIL ?? '').trim();
   const password = env.LLU_PASSWORD ?? '';
-  if (!email || !password) {
-    throw new Error('LLU_EMAIL and LLU_PASSWORD must be set in .env (see .env.example).');
-  }
-
-  const seconds = Number(env.POLL_INTERVAL_SECONDS || 60);
-  if (!Number.isFinite(seconds) || seconds < 30) {
-    throw new Error('POLL_INTERVAL_SECONDS must be a number of at least 30.');
-  }
+  const port = Number(env.PORT || 8080);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be a number from 1 to 65535.');
 
   return {
-    libre: {
-      email,
-      password,
-      region: (env.LLU_REGION ?? '').trim().toLowerCase(),
-      patientId: (env.LLU_PATIENT_ID ?? '').trim(),
-    },
-    pollIntervalMs: seconds * 1000,
+    libre:
+      email && password
+        ? {
+            email,
+            password,
+            region: (env.LLU_REGION ?? '').trim().toLowerCase(),
+            patientId: (env.LLU_PATIENT_ID ?? '').trim(),
+          }
+        : null,
+    port,
+    host: env.HOST || '0.0.0.0',
     dbPath: env.DB_PATH || './data/readings.db',
+    adminPassword: env.ADMIN_PASSWORD ?? '', // only used to seed the admin password on first start
   };
 }

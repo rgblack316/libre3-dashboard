@@ -1,7 +1,13 @@
 # Libre Dashboard
 
-Polls the unofficial LibreLinkUp API once a minute and stores glucose readings (mg/dL) in SQLite.
-The web display, admin page and alerts come next (see `libre-dashboard-spec.md`).
+Self-hosted FreeStyle Libre 3 dashboard. Polls the unofficial LibreLinkUp API once a minute, stores
+readings (mg/dL) in SQLite, and serves:
+
+- `/display` : kiosk view (big value, trend arrow, chart, time in range, alert banner, beeps through the monitor's speakers)
+- `/admin`   : settings (thresholds, alerts, quiet hours, display, account, history, CSV export), password protected
+- Alerts: urgent low / low / high / urgent high, no-data and connection-problem alerts, snooze, acknowledge, quiet hours
+
+See `libre-dashboard-spec.md` for the design.
 
 ## Quick install (Ubuntu/Debian, Docker)
 Run as a normal user with sudo (not root):
@@ -10,6 +16,8 @@ curl -fsSL https://raw.githubusercontent.com/rgblack316/libre3-dashboard/main/in
 ```
 It installs Docker if missing, downloads the app to `~/libre3-dashboard`, asks for your LibreLinkUp
 follower email and password (password hidden), tests the login, and only then starts the service.
+At the end it prints the display and admin URLs and a generated admin password (shown once; change it in `/admin`).
+You can skip the credentials prompt and enter them later on the admin page's Account tab.
 Re-run the same command to update; your `.env` and `data/` are kept.
 
 - Overrides go before `bash`, e.g. `curl -fsSL <url> | INSTALL_DIR=$HOME/glucose bash`. Available: `INSTALL_DIR`, `BRANCH`, `REPO`.
@@ -40,8 +48,12 @@ docker compose up -d --build                           # run in the background, 
 docker compose logs -f libre                           # watch polls
 docker compose ps                                      # shows healthy / unhealthy
 ```
-- The database lives in `./data` on the host (back it up from there).
-- Healthy means the last poll succeeded within 10 minutes.
+- The database lives in `./data` on the host (back it up from there). Credentials saved from `/admin` are
+  encrypted with `data/.secret`; back that file up with the database.
+- Open `http://<host-ip>:8080/display` and `/admin`. Change the host port with `HOST_PORT` in `.env`.
+- Admin password: `ADMIN_PASSWORD` in `.env` is used the first time only; if blank, one is generated and printed once in `docker compose logs libre`.
+- Healthy means the web server answers; connection problems show in the UI and alerts instead.
+- LAN only: do not expose the port to the internet. Docker-published ports bypass UFW rules.
 - The container runs as the `node` user (uid 1000), which matches the first user on Ubuntu.
   If `./data` is owned by another uid, run `sudo chown 1000:1000 data`.
 - The kiosk browser stays on the host, not in the container, since it needs the display and audio.
@@ -55,4 +67,5 @@ npm test             # runs against a local mock server, never touches Abbott
 - Unofficial, reverse-engineered API: it can change without notice. If logins start failing
   with an app-version error, bump `VERSION` in `src/libre.js`.
 - Wrong passwords back off for 30 minutes to avoid locking the account.
-- Keep the poll interval at 60s or higher to avoid rate limiting.
+- Keep the poll interval at 60s or higher to avoid rate limiting (set in `/admin` > System).
+- Behind Docker, all LAN clients may appear as one address, so a few wrong admin passwords can lock the login page for up to 15 minutes.
