@@ -1,0 +1,15 @@
+{
+  "name": "libre-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted FreeStyle Libre 3 glucose dashboard (poller + storage)",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/main.js",
+    "test-login": "node --env-file=.env scripts/test-login.js",
+    "test": "node --test test/*.test.js"
+  }
+}

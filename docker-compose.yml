@@ -1,0 +1,21 @@
+services:
+  libre:
+    build: .
+    image: libre-dashboard:latest
+    container_name: libre-dashboard
+    restart: unless-stopped
+    init: true
+    user: "${PUID:-1000}:${PGID:-1000}"
+    env_file: .env
+    environment:
+      DB_PATH: /app/data/readings.db
+    volumes:
+      - ./data:/app/data
+    # The web server arrives in the next build step. When it does, publish it here, e.g.:
+    # ports:
+    #   - "8080:8080"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -1,0 +1,11 @@
+.git
+.env
+data
+node_modules
+test
+*.tar.gz
+*.md
+docker-compose.yml
+Dockerfile
+.dockerignore
+install.sh
