@@ -58,6 +58,16 @@ docker compose ps                                      # shows healthy / unhealt
   If `./data` is owned by another uid, run `sudo chown 1000:1000 data`.
 - The kiosk browser stays on the host, not in the container, since it needs the display and audio.
 
+## Kiosk (on the NUC itself)
+After the install above, run this on the NUC to boot straight into the display, with alert sound over HDMI:
+```bash
+bash ~/libre3-dashboard/kiosk/setup-kiosk.sh
+sudo systemctl start kiosk      # or reboot
+```
+It installs `cage` (minimal Wayland compositor) and Chromium, creates a `kiosk` user, and runs Chromium
+full screen on `/display` at boot with autoplay allowed, so beeps need no click. Logs: `journalctl -u kiosk -f`.
+Text console: SSH in, or Ctrl+Alt+F2.
+
 ## Tests
 ```bash
 npm test             # runs against a local mock server, never touches Abbott
